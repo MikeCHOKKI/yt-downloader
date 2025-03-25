@@ -1,0 +1,64 @@
+{
+  "name": "yt-downloader",
+  "version": "1.0.0",
+  "description": "YT Downloader est une application CLI interactive permettant de télécharger des vidéos et playlists YouTube avec des fonctionnalités avancées. Contrairement aux outils classiques, elle propose une interface intuitive avec des menus interactifs, une gestion des configurations persistantes et une expérience de téléchargement améliorée.",
+  "keywords": [
+    "YT",
+    "Downloader",
+    "Application",
+    "CLI",
+    "Interactive",
+    "Télécharger",
+    "vidéos",
+    "Télécharger",
+    "playlists",
+    "YouTube",
+    "Fonctionnalités",
+    "avancées",
+    "Interface",
+    "intuitive",
+    "Menus",
+    "interactifs",
+    "Gestion",
+    "configurations",
+    "persistantes",
+    "Expérience",
+    "améliorée",
+    "Outils",
+    "classiques."
+  ],
+  "homepage": "https://github.com/MikeCHOKKI/yt-downloader#readme",
+  "bugs": {
+    "url": "https://github.com/MikeCHOKKI/yt-downloader/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MikeCHOKKI/yt-downloader.git"
+  },
+  "license": "ISC",
+  "author": "Ekim's",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "serve": "node dist/index.js"
+  },
+  "devDependencies": {
+    "@types/cli-progress": "^3.11.6",
+    "@types/figlet": "^1.7.0",
+    "@types/node": "^22.13.13",
+    "@types/progress": "^2.0.7",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@types/commander": "^2.12.0",
+    "chalk": "^5.4.1",
+    "cli-progress": "^3.12.0",
+    "commander": "^13.1.0",
+    "figlet": "^1.8.0",
+    "inquirer": "^12.5.0",
+    "progress": "^2.0.3"
+  }
+}
