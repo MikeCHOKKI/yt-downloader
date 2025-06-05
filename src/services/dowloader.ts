@@ -8,9 +8,11 @@ import { DownloadProgress } from "../utils/progress";
 
 export class VideoDownloader {
   private readonly progress: DownloadProgress;
+  private currentOutputFile: string;
 
   constructor() {
     this.progress = new DownloadProgress();
+    this.currentOutputFile = "";
   }
 
   /**
@@ -29,7 +31,7 @@ export class VideoDownloader {
     await this.prepareOutputDirectory(options.outputDir);
 
     const args = this.buildYtDlpArgs(url, options);
-    return this.executeDownload(args, options.verbose || false);
+    return this.executeDownload(args, options.verbose || false, false) as Promise<string>;
   }
 
   /**
@@ -42,13 +44,13 @@ export class VideoDownloader {
   async downloadPlaylist(
     url: string,
     options: DownloadOptions = {}
-  ): Promise<string> {
+  ): Promise<void> {
     this.validateInputs(url);
     await this.checkDependencies();
     await this.prepareOutputDirectory(options.outputDir);
 
     const args = this.buildPlaylistArgs(url, options);
-    return this.executeDownload(args, options.verbose || false);
+    return this.executeDownload(args, options.verbose || false, true);
   }
 
   private validateInputs(url: string): void {
@@ -80,16 +82,47 @@ export class VideoDownloader {
       options.outputDir || "downloads",
       "%(title)s.%(ext)s"
     );
-    const format = options.resolution
-      ? `bestvideo[height<=${options.resolution}]+bestaudio/best[height<=${options.resolution}]`
-      : "bestvideo+bestaudio/best";
 
-    return [
+    let formatString = "";
+    const vq = options.videoQuality || options.resolution; // Use videoQuality, fallback to resolution
+    const aq = options.audioQuality;
+
+    if (vq === "worst" && aq === "worstaudio") {
+      formatString = "worst";
+    } else if (vq === "worst") {
+      formatString = "worstvideo+bestaudio/worst";
+    } else if (aq === "worstaudio") {
+      formatString = "bestvideo+worstaudio/best";
+    } else {
+      let videoFormat = "bv*";
+      if (vq && vq !== "best" && /^\d+$/.test(vq)) { // e.g., "1080", "720"
+        videoFormat = `bv*[height<=?${vq}]`;
+      } else if (vq === "worst") {
+        videoFormat = "wv*";
+      }
+
+
+      let audioFormat = "ba*";
+      if (aq && aq !== "best" && /k$/.test(aq)) { // e.g., "192k", "128k"
+        audioFormat = `ba*[abr>=?${aq.replace('k', '')}]`; // yt-dlp might prefer abr>=? for minimum
+      } else if (aq === "worstaudio") {
+        audioFormat = "wa*";
+      }
+      // Ensure we have placeholders if one is 'best' and the other specific
+      if (videoFormat === 'bv*' && audioFormat === 'ba*') {
+        formatString = 'bestvideo+bestaudio/best';
+      } else {
+        formatString = `${videoFormat}+${audioFormat}/${videoFormat}/b`; // fallback to best if specific combo not available
+      }
+    }
+
+
+    const baseArgs = [
       "--newline",
       "-o",
       outputTemplate,
       "-f",
-      format,
+      formatString,
       "--merge-output-format",
       options.format || "mp4",
       "--console-title",
@@ -103,16 +136,45 @@ export class VideoDownloader {
       "%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
     );
 
-    const format = options.resolution
-      ? `bestvideo[height<=${options.resolution}]+bestaudio/best[height<=${options.resolution}]`
-      : "bestvideo+bestaudio/best";
+    // Replicate format string logic from buildYtDlpArgs
+    let formatString = "";
+    const vq = options.videoQuality || options.resolution;
+    const aq = options.audioQuality;
+
+    if (vq === "worst" && aq === "worstaudio") {
+      formatString = "worst";
+    } else if (vq === "worst") {
+      formatString = "worstvideo+bestaudio/worst";
+    } else if (aq === "worstaudio") {
+      formatString = "bestvideo+worstaudio/best";
+    } else {
+      let videoFormat = "bv*";
+      if (vq && vq !== "best" && /^\d+$/.test(vq)) {
+        videoFormat = `bv*[height<=?${vq}]`;
+      } else if (vq === "worst") {
+        videoFormat = "wv*";
+      }
+
+      let audioFormat = "ba*";
+      if (aq && aq !== "best" && /k$/.test(aq)) {
+        audioFormat = `ba*[abr>=?${aq.replace('k', '')}]`;
+      } else if (aq === "worstaudio") {
+        audioFormat = "wa*";
+      }
+
+      if (videoFormat === 'bv*' && audioFormat === 'ba*') {
+        formatString = 'bestvideo+bestaudio/best';
+      } else {
+        formatString = `${videoFormat}+${audioFormat}/${videoFormat}/b`;
+      }
+    }
 
     const args = [
       "--newline",
       "-o",
       outputTemplate,
       "-f",
-      format,
+      formatString,
       "--merge-output-format",
       options.format || "mp4",
       "--console-title",
@@ -128,15 +190,15 @@ export class VideoDownloader {
     return args;
   }
 
-  private executeDownload(args: string[], verbose: boolean): Promise<string> {
-    let outputFile = "";
+  private executeDownload(args: string[], verbose: boolean, isPlaylist: boolean = false): Promise<string | void> {
+    this.currentOutputFile = ""; // Reset for each download
     this.progress.start();
 
     return new Promise((resolve, reject) => {
       const ytdl = spawn("yt-dlp", args);
 
       ytdl.stdout.on("data", (data) =>
-        this.handleStdout(data.toString(), verbose, outputFile)
+        this.handleStdout(data.toString(), verbose)
       );
       ytdl.stderr.on("data", (data) =>
         this.handleStderr(data.toString(), verbose)
@@ -145,7 +207,11 @@ export class VideoDownloader {
       ytdl.on("close", (code) => {
         this.progress.stop();
         if (code === 0) {
-          resolve(outputFile);
+          if (isPlaylist) {
+            resolve();
+          } else {
+            resolve(this.currentOutputFile);
+          }
         } else {
           reject(new Error(`Téléchargement échoué avec le code ${code}`));
         }
@@ -160,19 +226,20 @@ export class VideoDownloader {
     });
   }
 
-  private handleStdout(
-    output: string,
-    verbose: boolean,
-    outputFile: string
-  ): void {
+  private handleStdout(output: string, verbose: boolean): void {
     if (verbose) {
       console.log(chalk.gray(output.trim()));
     }
 
     const destinationMatch = output.match(/\[download] Destination: (.+)/);
     if (destinationMatch) {
-      outputFile = destinationMatch[1];
+      this.currentOutputFile = destinationMatch[1];
     }
+
+    // For playlists, yt-dlp might output multiple destination lines.
+    // The last one before FFmpeg processing (if any) or completion would be the relevant one for a single video.
+    // For playlists, this.currentOutputFile will be overwritten multiple times.
+    // This is acceptable if we don't intend to return a specific file path for playlists.
 
     this.updateProgress(output);
   }
