@@ -11,6 +11,8 @@ const DEFAULT_CONFIG: Config = {
   outputDir: "downloads",
   format: "mp4",
   verbose: false,
+  audioQuality: "best",
+  videoQuality: "best",
 };
 
 /**

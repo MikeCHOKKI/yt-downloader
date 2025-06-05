@@ -92,18 +92,34 @@ async function downloadVideoFlow() {
 
     if (confirm) {
       const config = loadConfig();
+
+      const { videoQuality, audioQuality } = await inquirer.prompt([
+        {
+          type: "list",
+          name: "videoQuality",
+          message: "Qualité vidéo souhaitée:",
+          choices: ["best", "1080", "720", "480", "worst"],
+          default: config.videoQuality,
+        },
+        {
+          type: "list",
+          name: "audioQuality",
+          message: "Qualité audio souhaitée:",
+          choices: ["best", "192k", "128k", "64k", "worstaudio"],
+          default: config.audioQuality,
+        },
+      ]);
+
       const downloader = new VideoDownloader();
-      await downloader.downloadVideo(url, config);
+      await downloader.downloadVideo(url, { ...config, videoQuality, audioQuality });
 
       console.log(chalk.green("\n✅ Téléchargement terminé !"));
     } else {
       console.log(chalk.yellow("\nTéléchargement annulé."));
     }
   } catch (error) {
-    console.error(
-      chalk.red("\n❌ Erreur lors de la récupération des informations :"),
-      (error as Error).message
-    );
+    const config = loadConfig();
+    handleError(error as Error, config.verbose);
   }
 
   await inquirer.prompt({
@@ -146,17 +162,34 @@ async function downloadPlaylistFlow() {
     const downloader = new VideoDownloader();
     const limitNum = limit ? parseInt(limit) : undefined;
 
+    const { videoQuality, audioQuality } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "videoQuality",
+        message: "Qualité vidéo souhaitée pour la playlist:",
+        choices: ["best", "1080", "720", "480", "worst"],
+        default: config.videoQuality,
+      },
+      {
+        type: "list",
+        name: "audioQuality",
+        message: "Qualité audio souhaitée pour la playlist:",
+        choices: ["best", "192k", "128k", "64k", "worstaudio"],
+        default: config.audioQuality,
+      },
+    ]);
+
     await downloader.downloadPlaylist(url, {
       ...config,
       limit: limitNum,
+      videoQuality,
+      audioQuality,
     });
 
     console.log(chalk.green("\n✅ Téléchargement terminé !"));
   } catch (error) {
-    console.error(
-      chalk.red("\n❌ Erreur lors de la récupération des informations :"),
-      (error as Error).message
-    );
+    const config = loadConfig();
+    handleError(error as Error, config.verbose);
   }
 
   await inquirer.prompt({
@@ -212,13 +245,27 @@ async function changeDefaultOptions() {
 
   const currentConfig = loadConfig();
 
-  const { resolution, outputDir, format, verbose } = await inquirer.prompt([
+  const { resolution, outputDir, format, verbose, videoQuality, audioQuality } = await inquirer.prompt([
     {
       type: "list",
       name: "resolution",
-      message: "Résolution maximale :",
-      choices: ["480", "720", "1080", "1440", "2160"],
+      message: "Résolution maximale (legacy - use Video Quality below):",
+      choices: ["480", "720", "1080", "1440", "2160", "best"],
       default: currentConfig.resolution,
+    },
+    {
+      type: "list",
+      name: "videoQuality",
+      message: "Qualité vidéo par défaut:",
+      choices: ["best", "1080", "720", "480", "worst"],
+      default: currentConfig.videoQuality,
+    },
+    {
+      type: "list",
+      name: "audioQuality",
+      message: "Qualité audio par défaut:",
+      choices: ["best", "192k", "128k", "64k", "worstaudio"],
+      default: currentConfig.audioQuality,
     },
     {
       type: "input",
@@ -241,7 +288,7 @@ async function changeDefaultOptions() {
     },
   ]);
 
-  const newConfig = { resolution, outputDir, format, verbose };
+  const newConfig = { resolution, outputDir, format, verbose, videoQuality, audioQuality };
   saveConfig(newConfig);
 
   console.log(chalk.green("\n✅ Options enregistrées !"));
@@ -279,7 +326,4 @@ process.on("SIGINT", () => {
 });
 
 // Démarrage de l'application
-main().catch((error) => {
-  console.error(chalk.red("\nErreur fatale :"), error);
-  process.exit(1);
-});
+main();

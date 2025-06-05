@@ -4,6 +4,8 @@ export interface DownloadOptions {
   format?: string;
   verbose?: boolean;
   limit?: number;
+  audioQuality?: string;
+  videoQuality?: string;
 }
 
 export interface VideoInfo {
@@ -26,4 +28,6 @@ export interface Config {
   outputDir: string;
   format: string;
   verbose: boolean;
+  audioQuality: string;
+  videoQuality: string;
 }
