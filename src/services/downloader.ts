@@ -1,4 +1,4 @@
-import { spawn } from "child_process";
+import YtDlpWrap from "yt-dlp-wrap";
 import fs from "fs/promises";
 import path from "path";
 import chalk from "chalk";
@@ -9,10 +9,12 @@ import { DownloadProgress } from "../utils/progress";
 export class VideoDownloader {
   private readonly progress: DownloadProgress;
   private currentOutputFile: string;
+  private ytDlpWrap: YtDlpWrap;
 
   constructor() {
     this.progress = new DownloadProgress();
     this.currentOutputFile = "";
+    this.ytDlpWrap = new YtDlpWrap();
   }
 
   /**
@@ -23,8 +25,8 @@ export class VideoDownloader {
    * @throws Error si le téléchargement échoue
    */
   async downloadVideo(
-      url: string,
-      options: DownloadOptions = {}
+    url: string,
+    options: DownloadOptions = {}
   ): Promise<string | void> {
     this.validateInputs(url);
     await this.checkDependencies();
@@ -42,8 +44,8 @@ export class VideoDownloader {
    * @throws Error si le téléchargement échoue
    */
   async downloadPlaylist(
-      url: string,
-      options: DownloadOptions = {}
+    url: string,
+    options: DownloadOptions = {}
   ): Promise<string | void> {
     this.validateInputs(url);
     await this.checkDependencies();
@@ -62,7 +64,7 @@ export class VideoDownloader {
   private async checkDependencies(): Promise<void> {
     if (!checkFFmpeg()) {
       throw new Error(
-          "FFmpeg n'est pas installé. Installation requise pour fusionner les flux."
+        "FFmpeg n'est pas installé. Installation requise pour fusionner les flux."
       );
     }
   }
@@ -72,7 +74,7 @@ export class VideoDownloader {
       await fs.mkdir(outputDir, { recursive: true });
     } catch (error) {
       throw new Error(
-          `Impossible de créer le répertoire ${outputDir}: ${error}`
+        `Impossible de créer le répertoire ${outputDir}: ${error}`
       );
     }
   }
@@ -105,13 +107,13 @@ export class VideoDownloader {
 
   private buildYtDlpArgs(url: string, options: DownloadOptions): string[] {
     const outputTemplate = path.join(
-        options.outputDir || "downloads",
-        "%(title)s.%(ext)s"
+      options.outputDir || "downloads",
+      "%(title)s.%(ext)s"
     );
 
     const formatString = this.buildFormatString(
-        options.videoQuality || options.resolution,
-        options.audioQuality
+      options.videoQuality || options.resolution,
+      options.audioQuality
     );
 
     return [
@@ -129,13 +131,13 @@ export class VideoDownloader {
 
   private buildPlaylistArgs(url: string, options: DownloadOptions): string[] {
     const outputTemplate = path.join(
-        options.outputDir || "downloads",
-        "%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
+      options.outputDir || "downloads",
+      "%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
     );
 
     const formatString = this.buildFormatString(
-        options.videoQuality || options.resolution,
-        options.audioQuality
+      options.videoQuality || options.resolution,
+      options.audioQuality
     );
 
     const args = [
@@ -159,24 +161,23 @@ export class VideoDownloader {
   }
 
   private executeDownload(
-      args: string[],
-      verbose: boolean,
-      isPlaylist: boolean = false
+    args: string[],
+    verbose: boolean,
+    isPlaylist: boolean = false
   ): Promise<string | void> {
     this.currentOutputFile = "";
     this.progress.start();
 
     return new Promise((resolve, reject) => {
-      const ytdl = spawn("yt-dlp", args);
+      const emitter = this.ytDlpWrap.exec(args);
 
-      ytdl.stdout.on("data", (data) =>
-          this.handleStdout(data.toString(), verbose)
-      );
-      ytdl.stderr.on("data", (data) =>
-          this.handleStderr(data.toString(), verbose)
-      );
+      emitter.on("ytDlpEvent", (eventType: string, eventData: string) => {
+        const output = `[${eventType}] ${eventData}`;
+        this.handleStdout(output, verbose);
+      });
 
-      ytdl.on("close", (code) => {
+
+      emitter.on("close", (code) => {
         this.progress.stop();
         if (code === 0) {
           if (isPlaylist) {
@@ -189,10 +190,10 @@ export class VideoDownloader {
         }
       });
 
-      ytdl.on("error", (error) => {
+      emitter.on("error", (error) => {
         this.progress.stop();
         reject(
-            new Error(`Erreur lors du lancement de yt-dlp: ${error.message}`)
+          new Error(`Erreur lors du lancement de yt-dlp: ${error.message}`)
         );
       });
     });
@@ -219,7 +220,7 @@ export class VideoDownloader {
 
   private updateProgress(output: string): void {
     const downloadingMatch = output.match(
-        /\[download]\s+(\d+\.\d+)%\s+of\s+~?(\d+\.\d+)([KMG])iB\s+at\s+(\d+\.\d+)([KMG])iB\/s/
+      /\[download]\s+(\d+\.\d+)%\s+of\s+~?(\d+\.\d+)([KMG])iB\s+at\s+(\d+\.\d+)([KMG])iB\/s/
     );
 
     if (downloadingMatch) {
@@ -240,7 +241,7 @@ export class VideoDownloader {
       });
     } else if (output.includes("[download] Downloading video")) {
       const videoMatch = output.match(
-          /\[download] Downloading video (\d+) of (\d+)/
+        /\[download] Downloading video (\d+) of (\d+)/
       );
       if (videoMatch) {
         const current = parseInt(videoMatch[1]);

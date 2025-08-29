@@ -59,6 +59,7 @@
     "commander": "^13.1.0",
     "figlet": "^1.8.0",
     "inquirer": "^12.5.0",
-    "progress": "^2.0.3"
+    "progress": "^2.0.3",
+    "yt-dlp-wrap": "^2.3.12"
   }
 }

@@ -4,7 +4,7 @@ import inquirer from "inquirer";
 import { getVideoInfo, getPlaylistInfo } from "./utils/info";
 import { loadConfig, saveConfig } from "./utils/config";
 import { formatBytes, formatDuration } from "./utils/format";
-import { VideoDownloader } from "./services/dowloader";
+import { VideoDownloader } from "./services/downloader";
 
 // Affichage du titre
 function displayTitle() {
