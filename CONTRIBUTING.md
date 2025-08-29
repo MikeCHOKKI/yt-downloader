@@ -1,34 +1,74 @@
-# Contributing to YT Downloader
+# Contribuer à YT Downloader
 
-We welcome contributions to YT Downloader! Whether you want to report a bug, suggest a feature, or submit code changes, this guide will help you get started.
+Nous sommes ravis que vous souhaitiez contribuer à YT Downloader ! Que vous vouliez signaler un bug, suggérer une fonctionnalité ou soumettre des modifications de code, ce guide vous aidera à démarrer.
 
-## Reporting Bugs
+## Comment Contribuer
 
-If you encounter a bug, please open an issue on the [GitHub repository](https://github.com/MikeCHOKKI/yt-downloader/issues). When reporting a bug, please include:
+-   [Signaler un Bug](#signaler-un-bug)
+-   [Suggérer une Fonctionnalité](#suggérer-une-fonctionnalité)
+-   [Proposer des Modifications](#proposer-des-modifications)
 
-- A clear and descriptive title.
-- Steps to reproduce the bug.
-- The expected behavior and what actually happened.
-- Your environment details (OS, Node.js version, etc.).
+## Signaler un Bug
 
-## Suggesting Features
+Si vous rencontrez un bug, veuillez ouvrir une [issue sur GitHub](https://github.com/MikeCHOKKI/yt-downloader/issues). Lors de la création de l'issue, veuillez inclure :
 
-If you have an idea for a new feature or an improvement to an existing one, please open an issue on the [GitHub repository](https://github.com/MikeCHOKKI/yt-downloader/issues). Describe the feature and why you think it would be beneficial.
+-   Un titre clair et descriptif.
+-   Les étapes pour reproduire le bug.
+-   Le comportement attendu et ce qui s'est réellement passé.
+-   Les détails de votre environnement (système d'exploitation, version de Node.js, etc.).
 
-## Submitting Pull Requests
+## Suggérer une Fonctionnalité
 
-1. Fork the repository.
-2. Create a new branch for your changes:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. Make your changes and commit them with clear and descriptive messages.
-4. Push your changes to your forked repository:
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-5. Open a pull request on the [GitHub repository](https://github.com/MikeCHOKKI/yt-downloader/pulls). Provide a detailed description of your changes and why they should be merged.
+Si vous avez une idée pour une nouvelle fonctionnalité ou une amélioration, ouvrez une [issue sur GitHub](https://github.com/MikeCHOKKI/yt-downloader/issues) pour en discuter. Décrivez la fonctionnalité et pourquoi vous pensez qu'elle serait bénéfique.
 
-## Sponsoring
+## Proposer des Modifications
 
-If you find YT Downloader useful and would like to support its development, you can sponsor the project via [GitHub Sponsors](https://github.com/sponsors/MikeCHOKKI). Your support is greatly appreciated!
+Si vous souhaitez apporter des modifications au code, voici comment procéder :
+
+### Processus de Développement
+
+1.  **Forkez** le dépôt sur votre compte GitHub.
+2.  **Clonez** votre fork sur votre machine locale :
+    ```bash
+    git clone https://github.com/VOTRE-NOM-UTILISATEUR/yt-downloader.git
+    cd yt-downloader
+    ```
+3.  **Installez les dépendances** du projet :
+    ```bash
+    npm install
+    ```
+4.  **Créez une nouvelle branche** pour vos modifications :
+    ```bash
+    git checkout -b feature/votre-nom-de-fonctionnalite
+    ```
+5.  **Effectuez vos modifications** dans le code source (répertoire `src`).
+6.  **Testez vos modifications** en exécutant l'application en mode développement :
+    ```bash
+    npm start
+    ```
+    Ou en construisant le projet et en l'exécutant :
+    ```bash
+    npm run build
+    npm run serve
+    ```
+
+### Normes de Codage
+
+-   Le code est écrit en **TypeScript**. Veuillez suivre les meilleures pratiques de TypeScript.
+-   Essayez de conserver un style de code cohérent avec le reste du projet.
+-   Commentez votre code lorsque c'est nécessaire pour expliquer la logique complexe.
+
+### Soumettre une Pull Request
+
+1.  **Commitez** vos modifications avec des messages clairs et descriptifs.
+    ```bash
+    git commit -m "feat: Ajout de la fonctionnalité X"
+    ```
+2.  **Pushez** votre branche vers votre fork :
+    ```bash
+    git push origin feature/votre-nom-de-fonctionnalite
+    ```
+3.  **Ouvrez une Pull Request** depuis votre fork vers la branche `main` du dépôt original.
+4.  Dans la description de votre Pull Request, **décrivez en détail** les changements que vous avez apportés et **liez l'issue** correspondante si applicable (par exemple, `Closes #123`).
+
+Nous examinerons votre contribution dès que possible. Merci de participer à l'amélioration de YT Downloader !
