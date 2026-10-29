@@ -1,7 +1,7 @@
-# YT Downloader
+# YT Downloader - Téléchargeur Média Universel
 
 <p align="center">
-  <strong>Une application CLI interactive pour télécharger des vidéos et playlists YouTube.</strong>
+  <strong>Application CLI interactive pour télécharger des vidéos, musiques, playlists et flux en direct depuis YouTube, Twitch, TikTok et +1700 plateformes ou liens directs.</strong>
 </p>
 
 <p align="center">
@@ -9,58 +9,66 @@
   <a href="https://github.com/MikeCHOKKI/yt-downloader/issues"><img src="https://img.shields.io/github/issues/MikeCHOKKI/yt-downloader" alt="Problèmes ouverts"></a>
 </p>
 
-YT Downloader est une application en ligne de commande (CLI) interactive qui simplifie le téléchargement de vidéos et de playlists depuis YouTube. Contrairement aux outils classiques, elle offre une interface intuitive avec des menus interactifs, une gestion des configurations persistantes et une expérience de téléchargement améliorée.
+YT Downloader est une application en ligne de commande (CLI) interactive et polyvalente. Initialement pensée pour YouTube, elle permet désormais de télécharger et convertir des médias depuis plus de 1 700 plateformes web ainsi que depuis des liens directs (fichiers ou flux HLS `.m3u8` / DASH `.mpd`).
 
 ## Fonctionnalités
 
--   **Téléchargement de Vidéos et Playlists** : Téléchargez des vidéos individuelles ou des playlists entières en quelques clics.
--   **Informations Détaillées** : Obtenez des informations sur les vidéos et playlists (titre, durée, taille estimée, etc.) avant de télécharger.
--   **Choix de la Qualité** : Sélectionnez la qualité vidéo et audio souhaitée pour chaque téléchargement.
--   **Configuration Personnalisée** : Configurez des options par défaut (qualité, dossier de sortie, format) pour une utilisation plus rapide.
--   **Interface Interactive** : Naviguez facilement grâce à des menus et des invites clairs et conviviaux.
--   **Configuration Persistante** : Vos préférences sont sauvegardées pour les utilisations futures.
+- 🌐 **Support Multi-Plateformes Universel** : YouTube, Twitch, TikTok, Instagram, Twitter (X), Facebook, Reddit, Vimeo, Dailymotion, SoundCloud, Bandcamp, ainsi que tout lien direct / flux web.
+- 🔴 **Téléchargement & Enregistrement de Directs (Live Streams)** :
+  - Détection automatique des flux en direct.
+  - Enregistrement en continu avec arrêt propre sans corruption (via `Ctrl+C`).
+  - Option pour enregistrer depuis le début du live (DVR) ou en direct.
+  - Format MKV résistant aux pannes pour les streams.
+- 🎵 **Extraction Audio Uniquement** : Convertissez n'importe quelle vidéo ou musique en **MP3**, **M4A**, **FLAC**, **WAV** ou **OPUS** avec intégration des métadonnées.
+- 📑 **Téléchargement de Playlists et Chaînes** : Téléchargez des collections entières avec filtrage par nombre d'éléments.
+- 🍪 **Gestion des Cookies de Navigateur** : Possibilité d'utiliser les cookies de vos navigateurs (Chrome, Firefox, Brave, Edge...) pour accéder aux vidéos restreintes (âge, connexion).
+- ⚙️ **Configuration Persistante** : Sauvegarde de vos préférences (qualité vidéo, formats, dossier de destination, cookies).
+- 📊 **Progression Interactive & Résiliente** : Affichage temps réel de la vitesse, du volume et du pourcentage avec spinner animé.
 
 ## Prérequis
 
-Avant de commencer, assurez-vous d'avoir installé [FFmpeg](https://ffmpeg.org/download.html) sur votre système. FFmpeg est nécessaire pour fusionner les flux vidéo et audio.
+- [Node.js](https://nodejs.org/) (v18+)
+- [FFmpeg](https://ffmpeg.org/download.html) installé sur votre système (nécessaire pour la fusion des flux et l'extraction audio).
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) à jour (`yt-dlp -U`).
 
 ## Installation
 
-1.  Clonez le dépôt :
-    ```bash
-    git clone https://github.com/MikeCHOKKI/yt-downloader.git
-    ```
-2.  Accédez au répertoire du projet :
-    ```bash
-    cd yt-downloader
-    ```
-3.  Installez les dépendances :
-    ```bash
-    npm install
-    ```
+1. Clonez le dépôt :
+   ```bash
+   git clone https://github.com/MikeCHOKKI/yt-downloader.git
+   ```
+2. Accédez au répertoire du projet :
+   ```bash
+   cd yt-downloader
+   ```
+3. Installez les dépendances :
+   ```bash
+   npm install
+   ```
+4. Compilez le projet TypeScript :
+   ```bash
+   npm run build
+   ```
 
 ## Utilisation
 
-Pour démarrer l'application, exécutez :
+Pour lancer l'application en mode interactif :
 
 ```bash
 npm start
 ```
 
-Suivez ensuite les instructions interactives pour télécharger des vidéos, des playlists ou configurer les options.
+Suivez ensuite le menu à l'écran pour choisir l'action souhaitée.
 
 ## Configuration
 
-Vous pouvez configurer les options par défaut en sélectionnant l'option "Options par défaut" dans le menu principal. Les options configurables incluent :
-
--   **Qualité vidéo par défaut** : La qualité vidéo préférée (ex: 1080, 720, best).
--   **Qualité audio par défaut** : La qualité audio préférée (ex: 128k, best).
--   **Dossier de sortie** : Le répertoire où les vidéos seront sauvegardées.
--   **Format de sortie** : Le format de conteneur vidéo (ex: mp4, mkv).
-
-## Contributions
-
-Les contributions sont les bienvenues ! Veuillez consulter le fichier [CONTRIBUTING.md](CONTRIBUTING.md) pour les directives.
+Vous pouvez ajuster les paramètres par défaut via l'option **"⚙️ Options par défaut & Cookies"** du menu principal :
+- Qualité vidéo par défaut (best, 1080, 720, 480...)
+- Format conteneur vidéo (mp4, mkv, webm)
+- Qualité audio par défaut (best, 320k, 192k, 128k)
+- Format audio par défaut (mp3, m4a, flac, wav, opus)
+- Dossier de destination des téléchargements
+- Navigateur source des cookies pour les vidéos avec compte ou restrictions
 
 ## Licence
 
