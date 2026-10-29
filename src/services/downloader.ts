@@ -10,6 +10,7 @@ export class VideoDownloader {
   private readonly progress: DownloadProgress;
   private currentOutputFile: string;
   private ytDlpWrap: YtDlpWrap;
+  private activeChildProcess: any = null;
 
   constructor() {
     this.progress = new DownloadProgress();
@@ -18,11 +19,10 @@ export class VideoDownloader {
   }
 
   /**
-   * Télécharge une vidéo à partir d'une URL
+   * Télécharge un média (vidéo, stream en direct ou audio seul) à partir d'une URL
    * @param url - URL de la vidéo à télécharger
    * @param options - Options de téléchargement
    * @returns Promise qui se résout avec le chemin du fichier téléchargé
-   * @throws Error si le téléchargement échoue
    */
   async downloadVideo(
     url: string,
@@ -33,7 +33,7 @@ export class VideoDownloader {
     await this.prepareOutputDirectory(options.outputDir);
 
     const args = this.buildYtDlpArgs(url, options);
-    return await this.executeDownload(args, options.verbose || false, false);
+    return await this.executeDownload(args, options.verbose || false, false, options.isLive || false);
   }
 
   /**
@@ -41,7 +41,6 @@ export class VideoDownloader {
    * @param url - URL de la playlist à télécharger
    * @param options - Options de téléchargement
    * @returns Promise qui se résout lorsque le téléchargement est terminé
-   * @throws Error si le téléchargement échoue
    */
   async downloadPlaylist(
     url: string,
@@ -52,11 +51,11 @@ export class VideoDownloader {
     await this.prepareOutputDirectory(options.outputDir);
 
     const args = this.buildPlaylistArgs(url, options);
-    return this.executeDownload(args, options.verbose || false, true);
+    return this.executeDownload(args, options.verbose || false, true, false);
   }
 
   private validateInputs(url: string): void {
-    if (!url) {
+    if (!url || typeof url !== "string" || url.trim().length === 0) {
       throw new Error("URL invalide ou manquante");
     }
   }
@@ -64,7 +63,7 @@ export class VideoDownloader {
   private async checkDependencies(): Promise<void> {
     if (!checkFFmpeg()) {
       throw new Error(
-        "FFmpeg n'est pas installé. Installation requise pour fusionner les flux."
+        "FFmpeg n'est pas installé. FFmpeg est requis pour le traitement des flux et le muxing."
       );
     }
   }
@@ -93,7 +92,9 @@ export class VideoDownloader {
 
     let audioFormat = "ba*";
     if (aq && aq !== "best" && /k$/.test(aq)) {
-      audioFormat = `ba*[abr>=?${aq.replace("k", "")}]`;
+      // Filtrer pour être au plus proche de la qualité souhaitée
+      const bitrate = aq.replace("k", "");
+      audioFormat = `ba*[abr<=?${bitrate}]/ba*`;
     } else if (aq === "worstaudio") {
       audioFormat = "wa*";
     }
@@ -106,27 +107,63 @@ export class VideoDownloader {
   }
 
   private buildYtDlpArgs(url: string, options: DownloadOptions): string[] {
-    const outputTemplate = path.join(
-      options.outputDir || "downloads",
-      "%(title)s.%(ext)s"
-    );
+    const isLive = Boolean(options.isLive);
+    const isAudioOnly = Boolean(options.audioOnly);
 
-    const formatString = this.buildFormatString(
-      options.videoQuality || options.resolution,
-      options.audioQuality
-    );
+    const outputDir = options.outputDir || "downloads";
+    const templateName = isLive
+      ? "%(title)s - [LIVE %(upload_date>%Y-%m-%d)s].%(ext)s"
+      : "%(title)s.%(ext)s";
+    const outputTemplate = path.join(outputDir, templateName);
 
-    return [
+    const args: string[] = [
+      "--js-runtimes",
+      "node",
       "--newline",
+      "--windows-filenames",
       "-o",
       outputTemplate,
-      "-f",
-      formatString,
-      "--merge-output-format",
-      options.format || "mp4",
-      "--console-title",
-      url,
     ];
+
+    if (options.cookiesFromBrowser && options.cookiesFromBrowser !== "none") {
+      args.push("--cookies-from-browser", options.cookiesFromBrowser);
+    }
+
+    if (isLive) {
+      // Gestion des diffusions en direct (Live Streams)
+      if (options.liveFromStart) {
+        args.push("--live-from-start");
+      } else {
+        args.push("--no-live-from-start");
+      }
+      // Format MKV recommandé pour la résilience aux coupures des lives
+      const liveFormat = options.format || "mkv";
+      args.push("--merge-output-format", liveFormat);
+      args.push("--fixup", "warn");
+    } else if (isAudioOnly) {
+      // Mode Audio seul (SoundCloud, Bandcamp, extraction MP3 / M4A)
+      args.push("-x");
+      args.push("--audio-format", options.audioFormat || "mp3");
+      const audioQuality =
+        options.audioQuality && options.audioQuality !== "best"
+          ? options.audioQuality
+          : "0";
+      args.push("--audio-quality", audioQuality);
+      args.push("--embed-metadata");
+    } else {
+      // Mode Vidéo standard
+      const formatString = this.buildFormatString(
+        options.videoQuality || options.resolution,
+        options.audioQuality
+      );
+      args.push("-f", formatString);
+      args.push("--merge-output-format", options.format || "mp4");
+    }
+
+    args.push("--console-title");
+    args.push(url);
+
+    return args;
   }
 
   private buildPlaylistArgs(url: string, options: DownloadOptions): string[] {
@@ -135,22 +172,33 @@ export class VideoDownloader {
       "%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
     );
 
-    const formatString = this.buildFormatString(
-      options.videoQuality || options.resolution,
-      options.audioQuality
-    );
-
-    const args = [
+    const args: string[] = [
+      "--js-runtimes",
+      "node",
       "--newline",
+      "--windows-filenames",
       "-o",
       outputTemplate,
-      "-f",
-      formatString,
-      "--merge-output-format",
-      options.format || "mp4",
       "--console-title",
       "--yes-playlist",
     ];
+
+    if (options.cookiesFromBrowser && options.cookiesFromBrowser !== "none") {
+      args.push("--cookies-from-browser", options.cookiesFromBrowser);
+    }
+
+    if (options.audioOnly) {
+      args.push("-x");
+      args.push("--audio-format", options.audioFormat || "mp3");
+      args.push("--embed-metadata");
+    } else {
+      const formatString = this.buildFormatString(
+        options.videoQuality || options.resolution,
+        options.audioQuality
+      );
+      args.push("-f", formatString);
+      args.push("--merge-output-format", options.format || "mp4");
+    }
 
     if (options.limit && options.limit > 0) {
       args.push("--playlist-items", `1-${options.limit}`);
@@ -163,34 +211,57 @@ export class VideoDownloader {
   private executeDownload(
     args: string[],
     verbose: boolean,
-    isPlaylist: boolean = false
+    isPlaylist: boolean = false,
+    isLive: boolean = false
   ): Promise<string | void> {
     this.currentOutputFile = "";
-    this.progress.start();
+    this.progress.start(isLive);
 
     return new Promise((resolve, reject) => {
       const emitter = this.ytDlpWrap.exec(args);
+      this.activeChildProcess = (emitter as any).childProcess;
+
+      // Gestionnaire pour capturer Ctrl+C et finaliser proprement yt-dlp
+      const sigintHandler = () => {
+        if (this.activeChildProcess) {
+          console.log(
+            chalk.yellow("\n\n🛑 Arrêt demandé : finalisation du fichier en cours...")
+          );
+          try {
+            this.activeChildProcess.kill("SIGINT");
+          } catch {
+            // Ignorer si le processus est déjà arrêté
+          }
+        }
+      };
+
+      process.once("SIGINT", sigintHandler);
 
       emitter.on("ytDlpEvent", (eventType: string, eventData: string) => {
         const output = `[${eventType}] ${eventData}`;
-        this.handleStdout(output, verbose);
+        this.handleStdout(output, verbose, isLive);
       });
 
-
       emitter.on("close", (code) => {
+        process.removeListener("SIGINT", sigintHandler);
+        this.activeChildProcess = null;
         this.progress.stop();
-        if (code === 0) {
+
+        // Le code 0 ou code d'interruption propre (ex: live stream stoppé par l'utilisateur)
+        if (code === 0 || (isLive && (code === null || code === 130 || code === 1))) {
           if (isPlaylist) {
             resolve();
           } else {
-            resolve(this.currentOutputFile);
+            resolve(this.currentOutputFile || "Fichier téléchargé");
           }
         } else {
-          reject(new Error(`Téléchargement échoué avec le code ${code}`));
+          reject(new Error(`Téléchargement terminé avec le code ${code}`));
         }
       });
 
       emitter.on("error", (error) => {
+        process.removeListener("SIGINT", sigintHandler);
+        this.activeChildProcess = null;
         this.progress.stop();
         reject(
           new Error(`Erreur lors du lancement de yt-dlp: ${error.message}`)
@@ -199,7 +270,7 @@ export class VideoDownloader {
     });
   }
 
-  private handleStdout(output: string, verbose: boolean): void {
+  private handleStdout(output: string, verbose: boolean, isLive: boolean): void {
     if (verbose) {
       console.log(chalk.gray(output.trim()));
     }
@@ -209,35 +280,68 @@ export class VideoDownloader {
       this.currentOutputFile = destinationMatch[1];
     }
 
-    this.updateProgress(output);
-  }
-
-  private handleStderr(output: string, verbose: boolean): void {
-    if (verbose) {
-      console.error(chalk.red(output.trim()));
+    const mergeMatch = output.match(/\[ffmpeg] Merging formats into "(.+)"/);
+    if (mergeMatch) {
+      this.currentOutputFile = mergeMatch[1];
     }
+
+    const audioMatch = output.match(/\[ExtractAudio] Destination: (.+)/);
+    if (audioMatch) {
+      this.currentOutputFile = audioMatch[1];
+    }
+
+    this.updateProgress(output, isLive);
   }
 
-  private updateProgress(output: string): void {
+  private updateProgress(output: string, isLive: boolean): void {
+    // Cas 1: Téléchargement avec pourcentage et total connu
     const downloadingMatch = output.match(
-      /\[download]\s+(\d+\.\d+)%\s+of\s+~?(\d+\.\d+)([KMG])iB\s+at\s+(\d+\.\d+)([KMG])iB\/s/
+      /\[download]\s+(\d+\.?\d*)%\s+of\s+~?(\d+\.?\d*)\s*([KMGTP]?i?B)\s+at\s+(\d+\.?\d*)\s*([KMGTP]?i?B\/s)/i
     );
 
     if (downloadingMatch) {
       const percent = parseFloat(downloadingMatch[1]);
-      const size = `${downloadingMatch[2]}${downloadingMatch[3]}iB`;
-      const speed = `${downloadingMatch[4]}${downloadingMatch[5]}iB/s`;
+      const size = `${downloadingMatch[2]}${downloadingMatch[3]}`;
+      const speed = `${downloadingMatch[4]}${downloadingMatch[5]}`;
 
       this.progress.update({
         percent,
         size,
         speed,
         status: `${size} à ${speed}`,
+        isLive: false,
+      });
+      return;
+    }
+
+    // Cas 2: Flux direct (Live Stream) ou taille totale indéterminée
+    const streamMatch = output.match(
+      /\[download]\s+~?(\d+\.?\d*)\s*([KMGTP]?i?B)(?:\s+\([^)]+\))?\s+at\s+(\d+\.?\d*)\s*([KMGTP]?i?B\/s)/i
+    );
+
+    if (streamMatch) {
+      const size = `${streamMatch[1]}${streamMatch[2]}`;
+      const speed = `${streamMatch[3]}${streamMatch[4]}`;
+
+      this.progress.update({
+        size,
+        speed,
+        status: `${size} reçus (${speed})`,
+        isLive: isLive || true,
+      });
+      return;
+    }
+
+    // Cas 3: Post-traitements
+    if (output.includes("[ExtractAudio]")) {
+      this.progress.update({
+        percent: 98,
+        status: "Extraction et encodage audio...",
       });
     } else if (output.includes("[ffmpeg] Merging formats")) {
       this.progress.update({
-        percent: 100,
-        status: "Fusion des formats...",
+        percent: 99,
+        status: "Finalisation du fichier...",
       });
     } else if (output.includes("[download] Downloading video")) {
       const videoMatch = output.match(

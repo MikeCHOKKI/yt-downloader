@@ -6,6 +6,11 @@ export interface DownloadOptions {
   limit?: number;
   audioQuality?: string;
   videoQuality?: string;
+  audioOnly?: boolean;
+  audioFormat?: string;
+  isLive?: boolean;
+  liveFromStart?: boolean;
+  cookiesFromBrowser?: string;
 }
 
 export interface VideoInfo {
@@ -13,6 +18,12 @@ export interface VideoInfo {
   duration: number;
   filesize: number;
   url: string;
+  extractor: string;
+  isLive: boolean;
+  liveStatus?: string;
+  hasVideo?: boolean;
+  hasAudio?: boolean;
+  thumbnail?: string;
 }
 
 export interface PlaylistInfo {
@@ -20,6 +31,7 @@ export interface PlaylistInfo {
   videoCount: number;
   totalSize: number;
   totalDuration: number;
+  extractor: string;
   videos: VideoInfo[];
 }
 
@@ -30,4 +42,6 @@ export interface Config {
   verbose: boolean;
   audioQuality: string;
   videoQuality: string;
+  audioFormat: string;
+  cookiesFromBrowser?: string;
 }

@@ -13,6 +13,8 @@ const DEFAULT_CONFIG: Config = {
   verbose: false,
   audioQuality: "best",
   videoQuality: "best",
+  audioFormat: "mp3",
+  cookiesFromBrowser: "none",
 };
 
 /**

@@ -1,31 +1,35 @@
 import readline from "readline";
 import chalk from "chalk";
 
-interface ProgressData {
+export interface ProgressData {
   percent?: number;
   size?: string;
   speed?: string;
   status?: string;
+  isLive?: boolean;
 }
 
 export class DownloadProgress {
   private interval: NodeJS.Timeout | null = null;
+  private spinnerIndex = 0;
+  private readonly spinnerFrames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
   private data: ProgressData = {
     percent: 0,
     size: "0B",
     speed: "0B/s",
     status: "En attente...",
+    isLive: false,
   };
 
   /**
    * Démarre l'affichage de la progression
    */
-  public start(): void {
+  public start(isLive: boolean = false): void {
     if (this.interval) {
       clearInterval(this.interval);
     }
 
-    // Mettre à jour l'affichage toutes les 100ms
+    this.data.isLive = isLive;
     this.interval = setInterval(() => this.render(), 100);
   }
 
@@ -52,21 +56,34 @@ export class DownloadProgress {
   }
 
   /**
-   * Affiche la barre de progression
+   * Affiche la barre de progression ou le statut du direct
    */
   private render(): void {
-    const { percent = 0, size = "", speed = "", status = "" } = this.data;
+    const { percent = 0, status = "", isLive = false } = this.data;
+    const spinner = chalk.cyan(this.spinnerFrames[this.spinnerIndex % this.spinnerFrames.length]);
+    this.spinnerIndex++;
 
-    // Créer la barre de progression
-    const width = Math.min(process.stdout.columns - 30, 50);
-    const complete = Math.round((width * percent) / 100);
-    const incomplete = width - complete;
+    let line = "";
 
-    const bar =
-      chalk.green("█".repeat(complete)) + chalk.gray("░".repeat(incomplete));
+    if (isLive) {
+      // Affichage spécifique pour un flux direct continu
+      line = `${chalk.red("🔴 [EN DIRECT]")} ${spinner} ${status || "Enregistrement en cours..."} ${chalk.gray("(Ctrl+C pour finaliser)")}`;
+    } else {
+      // Détermination sécurisée de la largeur de la console
+      const cols =
+        process.stdout.columns && !isNaN(process.stdout.columns)
+          ? process.stdout.columns
+          : 80;
+      const width = Math.min(Math.max(cols - 35, 10), 45);
+      const safePercent = Math.max(0, Math.min(100, isNaN(percent) ? 0 : percent));
+      const complete = Math.max(0, Math.min(width, Math.round((width * safePercent) / 100)));
+      const incomplete = Math.max(0, width - complete);
 
-    // Créer la ligne complète
-    const line = `${bar} ${percent.toFixed(1)}% ${status ? `| ${status}` : ""}`;
+      const bar =
+        chalk.green("█".repeat(complete)) + chalk.gray("░".repeat(incomplete));
+
+      line = `${spinner} ${bar} ${safePercent.toFixed(1)}% ${status ? `| ${status}` : ""}`;
+    }
 
     // Effacer la ligne actuelle et afficher la nouvelle
     readline.clearLine(process.stdout, 0);
